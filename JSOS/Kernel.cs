@@ -44,6 +44,7 @@ namespace JSOS
 			List<string> args = input.Split().ToList();
 			string command = args[0];
 			args.RemoveAt(0);
+			int argPos;
 
 			if (command == "sysinfo")
 			{
@@ -61,15 +62,28 @@ namespace JSOS
 			} else if (command == "clear") {
 				Console.Clear();
 			} else if (command == "color") {
-				int fgPos = myIndexOf(args, "-fg");
-				if (fgPos != -1) {
-					Console.ForegroundColor = getColor(args[fgPos + 1].ToString());
+				argPos = myIndexOf(args, "-help");
+				if (argPos != -1) {
+					Console.WriteLine("-help");
+					Console.WriteLine("-fg [color]");
+					Console.WriteLine("-bg [color]");
+				} else {
+					argPos = myIndexOf(args, "-fg");
+					if (argPos != -1) {
+						Console.ForegroundColor = getColor(args[argPos + 1].ToString());
+					}
+					argPos = myIndexOf(args, "-bg");
+					if (argPos != -1) {
+						Console.BackgroundColor = getColor(args[argPos + 1].ToString());
+					}
+					Console.Clear();
 				}
-				int bgPos = myIndexOf(args, "-bg");
-				if (bgPos != -1) {
-					Console.BackgroundColor = getColor(args[bgPos + 1].ToString());
+			} else if (command == "shutdown") {
+				argPos = myIndexOf(args, "-r");
+				if (argPos != -1) {
+					Sys.Power.Reboot();
 				}
-				Console.Clear();
+				Sys.Power.Shutdown();
 			} else if (command == "credits")
 			{
 				Console.WriteLine("This project was made as a group broject between:");
