@@ -1,162 +1,188 @@
 ﻿using System;
-using System.Collections;
+//using System.Collections;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
-using System.Text;
-using System.Threading;
+//using System.ComponentModel;
+//using System.Linq;
+//using System.Text;
+//using System.Threading;
 using Sys = Cosmos.System;
+using tools;
+//using messages;
+using g;
 
-namespace JSOS
-{
-	public class Kernel : Sys.Kernel
-	{
-		// Comments like this mean you can leave notes in you code, so you can remind yourself of things later
-		// I'll add comments to explain what each line does
-		// Write your own comments if you want to, but you don't have to
-		protected override void BeforeRun()
-		{
+//using System.Text.Json;
+//using System.IO;
+//using System.Net.NetworkInformation;
+using static tools.shell;
+using System.Security.Authentication.ExtendedProtection;
+using System.IO;
+using System.Linq;
+using static commands.main;
+//using commands;
+
+// File format ideas:
+//		.prg/.csl		custom scripting language
+//		.scr		script for shell
+
+namespace g {
+	public static class globals {
+		public static Sys.FileSystem.CosmosVFS fs;
+		public static string cwd = @"0:\";
+		public static bool messagePrefix = true;
+		public static List<string> commandHistory = new();
+		public static int screenWidth = 80;
+		public static int screenHeight = 25;
+		public static List<shell.command> loadedCommands;
+		public static localTracker Locals = new localTracker();
+		public const ConsoleKey SuspendKey = ConsoleKey.Oem3; // Tick/Grave/Tilde
+		public static shell.command suspended = null;
+	}
+}
+namespace JSOS {
+	public class Kernel : Sys.Kernel {
+		Sys.FileSystem.CosmosVFS fs;
+		protected override void BeforeRun() {
+			Console.OutputEncoding = Cosmos.System.ExtendedASCII.CosmosEncodingProvider.Instance.GetEncoding(437);
+			//Console.InputEncoding = Cosmos.System.ExtendedASCII.CosmosEncodingProvider.Instance.GetEncoding(437);
+			Console.WriteLine("[....] Loading text screen");
 			var textscr = Cosmos.HAL.Global.TextScreen;
 			Cosmos.System.Global.Console = new Cosmos.System.Console(textscr);
 			Cosmos.HAL.Global.TextScreen = textscr;
 			Console.ForegroundColor = ConsoleColor.Black;
 			Console.BackgroundColor = ConsoleColor.White;
+			Console.Clear();
+			Console.WriteLine("[DONE] Loading text screen");
 
-			Console.Clear();														// Clears the screen so we can do our own startup sequence!
-			Console.WriteLine("Welcome to Jimmy S. Operating System");				// 'WriteLine' prints text and moves to the next line
-			Console.Write("Beginning sys-check ");									// Write out the syscheck
-			for (int i = 0; i <= 100; ++i)	//	Sets i to 0, then adds one to it (++i) while the condition is met (i <= 100)
-			{
-				//Thread.Sleep(4);													// Delays for 8 milliseconds
-				Console.Write("\rBeginning sys-check {0}%   ", i);					// '\r' returns to the beginning of the line, so all previous
-																					// messages are overwritten with the new percentage
-			}
-			Console.WriteLine(" - All Checks Passed");								// prints the text and then moves to the next line
-		}
+			Console.WriteLine("[....] Loading filesystem");
+			globals.fs = new Sys.FileSystem.CosmosVFS();
+			Sys.FileSystem.VFS.VFSManager.RegisterVFS(globals.fs);
+			var available_space = globals.fs.GetAvailableFreeSpace(@"0:\");
+			var fs_type = globals.fs.GetFileSystemType(@"0:\");
+			Console.CursorLeft = 0;
+			Console.CursorTop--;
+			Console.WriteLine("[DONE] Loading filesystem");
 
-		protected override void Run()
-		{
+			Console.WriteLine("[....] Loading commands");
+			globals.loadedCommands = new List<tools.shell.command>() {
+				new commands.main.sysinfo(),
+				new commands.main.help(),
+				new commands.main.set(),
+				new commands.main.clear(),
+				new commands.main.credits(),
+				new commands.main.stat(),
+				new commands.main.echo(),
+				new commands.main.cat(),
+				new commands.main.ls(),
+				new commands.main.mkFile(),
+				new commands.main.rmFile(),
+				new commands.main.mkDir(),
+				new commands.main.rmDir(),
+				new commands.main.cd(),
+				new commands.main.shutdown(),
+				new commands.main.jsh(),
+				new commands.main.move(),
+				new commands.main.copy(),
+				new commands.main.keyTest(),
+				new commands.main.resume(),
 
-			// In linux, the prompt is usually the current directory, but we havn't set that up yet. For now, just do this:
-			Console.Write("JSOS> "); // This is the 'prompt', or what comes right before the text
+				new commands.tool.edit(),
+				//new commands.tool.hexedit(),
 
-			string input = Console.ReadLine();                                         // Gets user input and saves it to the input variable
-			List<string> args = input.Split().ToList();
-			string command = args[0];
-			args.RemoveAt(0);
-			int argPos;
+			};
+			Console.CursorLeft = 0;
+			Console.CursorTop--;
+			Console.WriteLine("[DONE] Loading commands");
 
-			if (command == "sysinfo")
-			{
-				Console.WriteLine("This computer's information:");
-				Console.WriteLine("   Hardware:");
-				Console.WriteLine("      RAM:            " + Cosmos.Core.CPU.GetAmountOfRAM().ToString() + "MB");
-				Console.WriteLine("      CPU Brand:      " + Cosmos.Core.CPU.GetCPUBrandString());
-				Console.WriteLine("      CPU Vendor:     " + Cosmos.Core.CPU.GetCPUVendorName());
-				Console.WriteLine("      CPU Speed:      " + (Cosmos.Core.CPU.GetCPUCycleSpeed() / 100000000).ToString() + "Ghz");
-				Console.WriteLine("      CPU Uptime:     " + (Cosmos.Core.CPU.GetCPUUptime() / (ulong)Cosmos.Core.CPU.GetCPUCycleSpeed()).ToString() + "s");
-				Console.WriteLine("   Operating System:");
-				Console.WriteLine("      Name:           JSOS, Jimmy S. Operating System");
-				Console.WriteLine("      Version:        v0.1.0");
-				Console.WriteLine("      Build Date:     8/2/2023");
-			} else if (command == "clear") {
-				Console.Clear();
-			} else if (command == "color") {
-				argPos = myIndexOf(args, "-help");
-				if (argPos != -1) {
-					Console.WriteLine("-help");
-					Console.WriteLine("-fg [color]");
-					Console.WriteLine("-bg [color]");
-				} else {
-					argPos = myIndexOf(args, "-fg");
-					if (argPos != -1) {
-						Console.ForegroundColor = getColor(args[argPos + 1].ToString());
+			const string startUpFileName = "start.jsh";
+			if (tools.path.FileExists(@"0:\" + startUpFileName)) {
+				Console.WriteLine("[....] Running " + startUpFileName);
+				bool loadStart = true;
+				for (int i = 0; i < 20; i++) {
+					if (Console.KeyAvailable) {
+						ConsoleKeyInfo key = Console.ReadKey(true);
+						if (key.Key == ConsoleKey.Escape) {
+							Console.CursorLeft = 0;
+							Console.CursorTop--;
+							Console.WriteLine("[SKIP] Running " + startUpFileName);
+							loadStart = false;
+							break;
+						}
 					}
-					argPos = myIndexOf(args, "-bg");
-					if (argPos != -1) {
-						Console.BackgroundColor = getColor(args[argPos + 1].ToString());
-					}
-					Console.Clear();
 				}
-			} else if (command == "shutdown") {
-				argPos = myIndexOf(args, "-r");
-				if (argPos != -1) {
-					Sys.Power.Reboot();
-				}
-				Sys.Power.Shutdown();
-			} else if (command == "credits")
-			{
-				Console.WriteLine("This project was made as a group broject between:");
-				Console.WriteLine("Dion:");
-				Console.WriteLine("   Github: evildion07");
-				Console.WriteLine("   Discord: Musical Eevee#6926");
-				Console.WriteLine("Jimmy: ");
-				Console.WriteLine("   Github: code32123");
-				Console.WriteLine("   Discord: Jimmy32#2036");
-			}
-			else if (command == "help")
-			{
-				Console.WriteLine("Currently loaded commands:");
-				Console.WriteLine("   help                Prints out this system help message");
-				Console.WriteLine("   sysinfo             Lists hardware and software commands");
-				Console.WriteLine("   clear               Clears the screen");
-				Console.WriteLine("   credits             lists contact info for creators");
-			}
-			else
-			{ // Here is the else, what we do if nothing matches
-				Console.WriteLine("SYSERR: Command '" + command + "' not found on the system.");
-			}
-		}
-		string debugList(List<string> stringList) {
-			return String.Join(", ", stringList.ToArray()); ;
-		}
-		ConsoleColor getColor(string colorName){
-			colorName = colorName.ToLower();
-			if (colorName == "black") {
-				return ConsoleColor.Black;
-			} else if (colorName == "white") {
-				return ConsoleColor.White;
-			} else if (colorName == "blue") {
-				return ConsoleColor.Blue;
-			} else if (colorName == "darkblue") {
-				return ConsoleColor.DarkBlue;
-			} else if (colorName == "cyan") {
-				return ConsoleColor.Cyan;
-			} else if (colorName == "darkcyan") {
-				return ConsoleColor.DarkCyan;
-			} else if (colorName == "gray") {
-				return ConsoleColor.Gray;
-			} else if (colorName == "darkgray") {
-				return ConsoleColor.DarkGray;
-			} else if (colorName == "green") {
-				return ConsoleColor.Green;
-			} else if (colorName == "darkgreen") {
-				return ConsoleColor.DarkGreen;
-			} else if (colorName == "magenta") {
-				return ConsoleColor.Magenta;
-			} else if (colorName == "darkmagenta") {
-				return ConsoleColor.DarkMagenta;
-			} else if (colorName == "red") {
-				return ConsoleColor.Red;
-			} else if (colorName == "darkred") {
-				return ConsoleColor.DarkRed;
-			} else if (colorName == "yellow") {
-				return ConsoleColor.Yellow;
-			} else if (colorName == "darkyellow") {
-				return ConsoleColor.DarkYellow;
-			} else {
-				return ConsoleColor.Black;
-			}
-		}
-		int myIndexOf(List<string> stringList, string Find) {
-			int at = -1;
-			for (int i = 0; i < stringList.Count(); i++) {
-				if (stringList[i] == Find) {
-					at = i;
-					break;
+				if (loadStart) {
+					tools.shell.interpretFile(@"0:\" + startUpFileName);
 				}
 			}
-			return at;
+
+			//Console.WriteLine("Loading settings.json");
+			//string fileName = "settings.json";
+			//string jsonString = File.ReadAllText(fileName);
+			//WeatherForecast weatherForecast = JsonSerializer.Deserialize<WeatherForecast>(jsonString)!;
+
+			Console.WriteLine("Welcome to Jimmy's Operating System");               // 'WriteLine' prints text and moves to the next line
+																					//while (true) {
+																					//	ConsoleKeyInfo cki = Console.ReadKey(true);
+																					//	bool ctrl = (cki.Modifiers & ConsoleModifiers.Control) != 0;
+																					//	if (ctrl) {
+																					//		Console.WriteLine("A'" + cki.KeyChar.ToString() + "',B'" + ((int)cki.KeyChar).ToString() + "'");
+																					//	}
+																					//}
+
+			//Console.WriteLine("This builds tests");
+
+			//Console.Write("Beginning sys-check ");                                // Write out the syscheck
+			//for (int i = 0; i <= 100; ++i)                                        //	Sets i to 0, then adds one to it (++i) while the condition is met (i <= 100)
+			//{
+			//	Thread.Sleep(1);                                                    // Delays for 1 millisecond
+			//	Console.Write("\rBeginning sys-check {0}%   ", i);                  // '\r' returns to the beginning of the line, so all previous
+			//																		// messages are overwritten with the new percentage
+			//}
+			//Console.WriteLine(" - All Checks Passed");                              // prints the text and then moves to the next line
+		}
+
+		protected override void Run() {
+			try {
+				_Run();
+			} catch (Exception ex) {
+				Console.WriteLine(ex.ToString());
+			}
+		}
+		void _Run() {
+			Console.BackgroundColor = tools.console.GetColor(globals.Locals.get("SHELL_BCOLOR", "WHITE"));
+
+			Console.ForegroundColor = globals.Locals.getColor("SHELL_PROMPT_PATH_COLOR", globals.Locals.getColor("SHELL_COLOR"));
+			bool doFinalSlash = globals.Locals.getBool("SHELL_PROMPT_PATH_SLASH");
+			Console.Write(tools.path.Validate(globals.cwd, finalSlash: doFinalSlash));
+
+			Console.ForegroundColor = globals.Locals.getColor("SHELL_PROMPT_END_COLOR", globals.Locals.getColor("SHELL_COLOR"));
+			Console.Write(">");
+			Console.ForegroundColor = globals.Locals.getColor("SHELL_COLOR");
+
+			string input = tools.console.ReadLine();
+			if (input == "") return;
+
+			//List<string> args = tools.shell.parseArgs(input);
+			//string commandName = args[0];
+			//args.RemoveAt(0);
+			//command cmd = tools.shell.getCommand(commandName);
+			//if (cmd == null) {
+			//	messages.errors.command.commandNotFound(commandName);
+			//	return;
+			//}
+			//metReturn isMet = tools.shell.applyArguments(cmd.argsReqs, args);
+			//if (!isMet.valid) { messages.errors.arguments.invalidArgs(args, isMet); return; }
+
+			//exitcode exitCode = cmd.BeforeRun(args);
+			//while (exitCode == exitcode.CONTINUE) {
+			//	exitCode = cmd.Run(args);
+			//}
+			//if (exitCode != exitcode.HALT && exitCode != exitcode.CONTINUE && exitCode != exitcode.HANDLEDERROR) {
+			//	Console.WriteLine((int)exitCode);
+			//}
+			exitcode exitCode = tools.shell.interpret(input);
+			if (exitCode != exitcode.HALT && exitCode != exitcode.CONTINUE && exitCode != exitcode.HANDLEDERROR) {
+				Console.WriteLine((int)exitCode);
+			}
 		}
 	}
 }
