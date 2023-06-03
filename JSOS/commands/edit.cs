@@ -16,7 +16,7 @@ using static tools.shell;
 using Sys = Cosmos.System;
 
 namespace commands {
-	public class tool {
+	public partial class tool {
 		public class edit : command {
 			public edit() {
 				name = "edit";
@@ -44,8 +44,9 @@ namespace commands {
 			int availableWidth;
 			int gutterWidth;
 			const int screenMarginTop = 1;
+			exitcode toReturn = exitcode.CONTINUE;
 
-			public override exitcode BeforeRun(List<string> args) {
+			public override exitcode Start(List<string> args) {
 				Console.Clear();
 				cursorPosX = 0;
 				cursorPosY = 0;
@@ -56,13 +57,20 @@ namespace commands {
 
 				filePath = tools.path.Validate(fileArg.contents, finalSlash: false);
 				bool fileExists = tools.path.FileExists(filePath);
-				if (!fileExists) { messages.errors.file.fileNotFound(filePath); return exitcode.HANDLEDERROR; }
 				fileName = tools.path.fileName(filePath);
-				fileBuffer = File.ReadAllLines(filePath).ToList();
-				if (fileBuffer.Count == 0) {
-					fileBuffer = new List<string> {""};
+				if (!fileExists) {
+					//messages.errors.file.fileNotFound(filePath); return exitcode.HANDLEDERROR;
+					edited = true;
+					fileBuffer = new List<string> { "" };
+					displayNotif.set("New File");
+				} else {
+					fileBuffer = File.ReadAllLines(filePath).ToList();
+					if (fileBuffer.Count == 0) {
+						fileBuffer = new List<string> { "" };
+					}
+					displayNotif.set("Loaded " + fileBuffer.Count.ToString() + " lines");
 				}
-				displayNotif.set("Loaded " + fileBuffer.Count.ToString() + " lines");
+
 
 				availableHeight = globals.screenHeight - 3;
 				gutterWidth = fileBuffer.Count.ToString().Length;
@@ -189,10 +197,14 @@ namespace commands {
 					expired = ((Cosmos.Core.CPU.GetCPUUptime() / (ulong)Cosmos.Core.CPU.GetCPUCycleSpeed())) > (startTime + lastsForSeconds);
 				}
 			}
-			public override exitcode Run(ConsoleKeyInfo cki) {
-				//ConsoleKeyInfo cki = Console.ReadKey(true);
-				if (cki.Key == ConsoleKey.NoName ) {
-					return exitcode.CONTINUE;
+			public override void Exit() {
+				Console.Clear();
+				Console.SetCursorPosition(0, 0);
+			}
+			public override void KeyPress(ConsoleKeyInfo cki) {
+				if (cki.Key == ConsoleKey.NoName) {
+					toReturn = exitcode.CONTINUE;
+					return;
 				}
 				bool ctrl = (cki.Modifiers & ConsoleModifiers.Control) != 0;
 				bool alt = (cki.Modifiers & ConsoleModifiers.Alt) != 0;
@@ -200,7 +212,8 @@ namespace commands {
 				if (ctrl) {
 					if (cki.Key == ConsoleKey.Q) {
 						Console.Clear();
-						return exitcode.HALT;
+						toReturn = exitcode.HALT;
+						return;
 					} else if (cki.Key == ConsoleKey.S) {
 						if (shift) {
 
@@ -228,12 +241,12 @@ namespace commands {
 						tryMoveCursor(cursorDirection.left);
 					} else if (cki.Key == ConsoleKey.RightArrow) {
 						tryMoveCursor(cursorDirection.right);
-					//} else if (cki.Key == ConsoleKey.PageUp) {
-					//	Console.CursorVisible = true;
-					//	Console.Write("T");
-					//} else if (cki.Key == ConsoleKey.PageDown) {
-					//	Console.CursorVisible = false;
-					//	Console.Write("F");
+						//} else if (cki.Key == ConsoleKey.PageUp) {
+						//	Console.CursorVisible = true;
+						//	Console.Write("T");
+						//} else if (cki.Key == ConsoleKey.PageDown) {
+						//	Console.CursorVisible = false;
+						//	Console.Write("F");
 					} else if (cki.Key == ConsoleKey.Backspace) {
 						edited = true;
 						if (fileBuffer[cursorPosY].Length > 0 && cursorPosX > 0) {
@@ -257,13 +270,13 @@ namespace commands {
 						renderDocument();
 					} else if (cki.Key == ConsoleKey.Enter) {
 						edited = true;
-						
+
 						string line = fileBuffer[cursorPosY];
 						if (line.Length > 0) {
 							fileBuffer[cursorPosY] = line.Substring(0, cursorPosX);
-							fileBuffer.Insert(cursorPosY+1, line.Substring(cursorPosX, line.Length-cursorPosX));
+							fileBuffer.Insert(cursorPosY + 1, line.Substring(cursorPosX, line.Length - cursorPosX));
 						} else {
-							fileBuffer.Insert(cursorPosY+1, "");
+							fileBuffer.Insert(cursorPosY + 1, "");
 						}
 						cursorPosY++;
 						cursorPosX = 0;
@@ -274,8 +287,17 @@ namespace commands {
 					}
 					updateCursor();
 				}
-				return exitcode.CONTINUE;
+				toReturn = exitcode.CONTINUE;
+				return;
+
+
 			}
-		};
+			public override void Resume() {
+				renderDocument();
+			}
+			public override exitcode Run() {
+				return toReturn;
+			}
+		}
 	}
 }

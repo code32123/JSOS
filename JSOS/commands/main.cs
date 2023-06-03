@@ -22,17 +22,17 @@ namespace commands {
 				description = "Lists hardware and software stats";
 				argsReqs = new() { };
 			}
-			public override exitcode BeforeRun(List<string> args) {
-				Console.WriteLine("                         Hardware:");
-				Console.WriteLine("                            RAM:            " + Cosmos.Core.CPU.GetAmountOfRAM().ToString() + "MB");
-				Console.WriteLine("                            CPU Brand:      " + Cosmos.Core.CPU.GetCPUBrandString());
-				Console.WriteLine("                            CPU Vendor:     " + Cosmos.Core.CPU.GetCPUVendorName());
-				Console.WriteLine("                            CPU Speed:      " + (Cosmos.Core.CPU.GetCPUCycleSpeed() / 100000000).ToString() + "Ghz");
-				Console.WriteLine("                            CPU Uptime:     " + (Cosmos.Core.CPU.GetCPUUptime() / (ulong)Cosmos.Core.CPU.GetCPUCycleSpeed()).ToString() + "s");
-				Console.WriteLine("                         Operating System:");
-				Console.WriteLine("                            Name:           JSOS, Jimmy S. Operating System");
-				Console.WriteLine("                            Version:        v0.1.1");
-				Console.WriteLine("                            Build Date:     5/20/2023");
+			public override exitcode Start(List<string> args) {
+				Console.WriteLine(@"                 Hardware:");
+				Console.WriteLine(@"  ----  ,--.         RAM:            " + Cosmos.Core.CPU.GetAmountOfRAM().ToString() + "MB");
+				Console.WriteLine(@"    |   |__          CPU Brand:      " + Cosmos.Core.CPU.GetCPUBrandString());
+				Console.WriteLine(@"    |      |         CPU Vendor:     " + Cosmos.Core.CPU.GetCPUVendorName());
+				Console.WriteLine(@"  ._/    __/         CPU Speed:      " + (Cosmos.Core.CPU.GetCPUCycleSpeed() / 100000000).ToString() + "Ghz");
+				Console.WriteLine(@"  ,--.  ,--.         CPU Uptime:     " + (Cosmos.Core.CPU.GetCPUUptime() / (ulong)Cosmos.Core.CPU.GetCPUCycleSpeed()).ToString() + "s");
+				Console.WriteLine(@"  |  |  |__      Operating System:");
+				Console.WriteLine(@"  |  |     |         Name:           JSOS, Jimmy S. Operating System");
+				Console.WriteLine(@"  \__/   __/         Version:        v0.1.1");
+				Console.WriteLine(@"                     Build Date:     5/20/2023");
 				return exitcode.HALT;
 			}
 		}
@@ -44,7 +44,7 @@ namespace commands {
 				cmdName = new tools.shell.argumentConditionPositional("Command", 0, needed: false);
 				argsReqs = new() { cmdName };
 			}
-			public override exitcode BeforeRun(List<string> args) {
+			public override exitcode Start(List<string> args) {
 				if (cmdName.wasFound) {
 					command cmd = tools.shell.getCommand(cmdName.contents);
 					if (cmd == null) {
@@ -89,7 +89,7 @@ namespace commands {
 				newValue = new tools.shell.argumentConditionPositional("Value", 1, needed: true);
 				argsReqs = new() { varName, newValue };
 			}
-			public override exitcode BeforeRun(List<string> args) {
+			public override exitcode Start(List<string> args) {
 				if (varName.contents.Contains('$')) { messages.errors.arguments.invalidSymbol(varName.contents, "$"); return exitcode.ERROR; }
 				globals.Locals.set(varName.contents, newValue.contents);
 				return exitcode.HALT;
@@ -101,7 +101,7 @@ namespace commands {
 				description = "Clears the screen";
 				argsReqs = new() { };
 			}
-			public override exitcode BeforeRun(List<string> args) {
+			public override exitcode Start(List<string> args) {
 				Console.BackgroundColor = tools.console.GetColor(globals.Locals.get("SHELL_BCOLOR", "WHITE"));
 				Console.Clear();
 				return exitcode.HALT;
@@ -113,7 +113,7 @@ namespace commands {
 				description = "Gives credit to the amazing authors!";
 				argsReqs = new() { };
 			}
-			public override exitcode BeforeRun(List<string> args) {
+			public override exitcode Start(List<string> args) {
 				Console.WriteLine("This project was made as a group broject between:");
 				Console.WriteLine("Dion:");
 				Console.WriteLine("   Github: evildion07");
@@ -132,7 +132,7 @@ namespace commands {
 				fileArg = new tools.shell.argumentConditionPositional("Path", -1, needed: true);
 				argsReqs = new() { fileArg };
 			}
-			public override exitcode BeforeRun(List<string> args) {
+			public override exitcode Start(List<string> args) {
 				string path = fileArg.contents;
 				path = tools.path.Validate(path, finalSlash: false);
 				bool fileExists = tools.path.FileExists(path);
@@ -154,7 +154,7 @@ namespace commands {
 				text = new tools.shell.argumentConditionPositional("Text", -1, needed: true);
 				argsReqs = new() { text };
 			}
-			public override exitcode BeforeRun(List<string> args) {
+			public override exitcode Start(List<string> args) {
 				Console.WriteLine(text.contents);
 				return exitcode.HALT;
 			}
@@ -167,7 +167,7 @@ namespace commands {
 				fileArg = new tools.shell.argumentConditionPositional("Path", -1, needed: true);
 				argsReqs = new() { fileArg };
 			}
-			public override exitcode BeforeRun(List<string> args) {
+			public override exitcode Start(List<string> args) {
 				string path = fileArg.contents;
 				path = tools.path.Validate(path, finalSlash: false);
 				bool fileExists = tools.path.FileExists(path);
@@ -203,7 +203,7 @@ namespace commands {
 				Console.BackgroundColor = tools.console.GetColor(globals.Locals.get("SHELL_BCOLOR", "WHITE"));
 				Console.ForegroundColor = globals.Locals.getColor("SHELL_COLOR");
 			}
-			public override exitcode BeforeRun(List<string> args) {
+			public override exitcode Start(List<string> args) {
 				LSResults files;
 				if (!pathArg.wasFound) {
 					files = tools.path.List(globals.cwd);
@@ -261,7 +261,7 @@ namespace commands {
 				pathArg = new tools.shell.argumentConditionPositional("Path", -1, needed: true);
 				argsReqs = new() { pathArg };
 			}
-			public override exitcode BeforeRun(List<string> args) {
+			public override exitcode Start(List<string> args) {
 				string path = pathArg.contents;
 				path = tools.path.Validate(path, finalSlash: false);
 				if (tools.path.FileExists(path)) {
@@ -286,7 +286,7 @@ namespace commands {
 				pathArg = new tools.shell.argumentConditionPositional("Path", -1, needed: true);
 				argsReqs = new() { pathArg };
 			}
-			public override exitcode BeforeRun(List<string> args) {
+			public override exitcode Start(List<string> args) {
 				string path = pathArg.contents;
 				path = tools.path.Validate(path, finalSlash: false);
 				bool fileExists = tools.path.FileExists(path);
@@ -309,7 +309,7 @@ namespace commands {
 				pathArg = new tools.shell.argumentConditionPositional("Path", -1, needed: true);
 				argsReqs = new() { pathArg };
 			}
-			public override exitcode BeforeRun(List<string> args) {
+			public override exitcode Start(List<string> args) {
 				string path = pathArg.contents;
 				path = tools.path.Validate(path, finalSlash: true);
 
@@ -330,7 +330,7 @@ namespace commands {
 				pathArg = new tools.shell.argumentConditionPositional("Path", -1, needed: true);
 				argsReqs = new() { pathArg };
 			}
-			public override exitcode BeforeRun(List<string> args) {
+			public override exitcode Start(List<string> args) {
 				string path = pathArg.contents;
 				path = tools.path.Validate(path, finalSlash: true);
 				bool fileExists = tools.path.DirectoryExists(path);
@@ -353,7 +353,7 @@ namespace commands {
 				pathArg = new tools.shell.argumentConditionPositional("Path", -1, needed: true);
 				argsReqs = new() { pathArg };
 			}
-			public override exitcode BeforeRun(List<string> args) {
+			public override exitcode Start(List<string> args) {
 				string path = pathArg.contents;
 				path = tools.path.Validate(path);
 				bool pathExists = tools.path.DirectoryExists(path);
@@ -370,7 +370,7 @@ namespace commands {
 				restartArg = new tools.shell.argumentConditionFlag("Restart", "-r", needed: false);
 				argsReqs = new() { restartArg };
 			}
-			public override exitcode BeforeRun(List<string> args) {
+			public override exitcode Start(List<string> args) {
 
 				if (restartArg.wasFound) {
 					Sys.Power.Reboot();
@@ -387,7 +387,7 @@ namespace commands {
 				fileArg = new tools.shell.argumentConditionPositional("Path", -1, needed: true);
 				argsReqs = new() { fileArg };
 			}
-			public override exitcode BeforeRun(List<string> args) {
+			public override exitcode Start(List<string> args) {
 				string path = fileArg.contents;
 				path = tools.path.Validate(path, finalSlash: false);
 				bool fileExists = tools.path.FileExists(path);
@@ -403,11 +403,11 @@ namespace commands {
 			public move() {
 				name = "move";
 				description = "Move a file";
-				fromPathArg = new tools.shell.argumentConditionPositional("Path", -2, needed: true);
-				toPathArg = new tools.shell.argumentConditionPositional("Path", -1, needed: true);
+				fromPathArg = new tools.shell.argumentConditionPositional("From", -2, needed: true);
+				toPathArg = new tools.shell.argumentConditionPositional("To", -1, needed: true);
 				argsReqs = new() { fromPathArg, toPathArg };
 			}
-			public override exitcode BeforeRun(List<string> args) {
+			public override exitcode Start(List<string> args) {
 				string pathFrom = fromPathArg.contents;
 				string pathTo = toPathArg.contents;
 				pathFrom = tools.path.Validate(pathFrom, finalSlash: false);
@@ -436,11 +436,11 @@ namespace commands {
 			public copy() {
 				name = "copy";
 				description = "Copy a file";
-				fromPathArg = new tools.shell.argumentConditionPositional("Path", -2, needed: true);
-				toPathArg = new tools.shell.argumentConditionPositional("Path", -1, needed: true);
+				fromPathArg = new tools.shell.argumentConditionPositional("From", -2, needed: true);
+				toPathArg = new tools.shell.argumentConditionPositional("To", -1, needed: true);
 				argsReqs = new() { fromPathArg, toPathArg };
 			}
-			public override exitcode BeforeRun(List<string> args) {
+			public override exitcode Start(List<string> args) {
 				string pathFrom = fromPathArg.contents;
 				string pathTo = toPathArg.contents;
 				pathFrom = tools.path.Validate(pathFrom, finalSlash: false);
@@ -468,7 +468,7 @@ namespace commands {
 				description = "Keyboard tester";
 				argsReqs = new() { };
 			}
-			public override exitcode BeforeRun(List<string> args) {
+			public override exitcode Start(List<string> args) {
 				ConsoleKeyInfo cki = Console.ReadKey(true);
 				Console.Write(((int)cki.Key).ToString());
 				Console.Write(":");
@@ -484,7 +484,7 @@ namespace commands {
 				description = "Resume suspended command";
 				argsReqs = new() { };
 			}
-			public override exitcode BeforeRun(List<string> args) {
+			public override exitcode Start(List<string> args) {
 				if (globals.suspended == null) {
 					Console.WriteLine("No program is suspended");
 					return exitcode.HANDLEDERROR;
@@ -493,6 +493,7 @@ namespace commands {
 				globals.suspended = null;
 				exitcode exitCode;
 				Console.Clear();
+				cmd.Resume();
 				do {
 					exitCode = step(cmd);
 				} while (exitCode == exitcode.CONTINUE);

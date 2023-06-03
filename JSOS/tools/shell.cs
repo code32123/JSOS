@@ -8,6 +8,7 @@ using System.Security;
 using Cosmos.System.Network.IPv4.TCP;
 using g;
 using static messages.errors;
+using static messages.errors.arguments;
 using static tools.shell;
 
 namespace tools {
@@ -56,8 +57,14 @@ namespace tools {
 			public string name;
 			public string description;
 			public List<tools.shell.argumentCondition> argsReqs;
-			public virtual exitcode BeforeRun(List<string> args) { return exitcode.HALT; }
-			public virtual exitcode Run(ConsoleKeyInfo cki) { return exitcode.HALT; }
+			public virtual exitcode Start(List<string> args) { return exitcode.HALT; }
+			public virtual exitcode Run() { return exitcode.HALT; }
+			/// <summary>
+			/// Called when the program is exited for any reason - suspending or quitting
+			/// </summary>
+			public virtual void Exit() { return; }
+			public virtual void Resume() { return; }
+			public virtual void KeyPress(ConsoleKeyInfo cki) { return; }
 		}
 		public class argumentCondition {
 			public string name;
@@ -82,7 +89,7 @@ namespace tools {
 				int flagPos = tools.lists.IndexOf(arguments, this.flag);
 				if (flagPos == -1) {
 					this.wasFound = false;
-					return new metReturn(!this.needed, 1, this.flag); // If it's not there and not required, then mark it as satisfied
+					return new metReturn(!this.needed, invalidArgsCode.flagNotFound, this.flag); // If it's not there and not required, then mark it as satisfied
 				}
 				// At this point, flag IS in the arguments at flagPos
 				// This will return a success because it exists and it needs no followers
@@ -94,7 +101,7 @@ namespace tools {
 				// This will fail if there is not even enough room for all the followers the argument needs
 				if (this.follow.Count > (arguments.Count - flagPos)) {
 					this.wasFound = false;
-					return new metReturn(2);
+					return new metReturn(invalidArgsCode.flagNotEnoughFollowers);
 				}
 				// Now to validate the followers
 				List<simpleArg> possibleFollowers = arguments.GetRange(flagPos, this.follow.Count);
@@ -137,14 +144,14 @@ namespace tools {
 				// Just need to make sure that arguments contains elements at the location specified, and that there's enough room
 				if (arguments.Count < tools.lists.IndiceMagnitude(pos)) {
 					this.wasFound = false;
-					return new metReturn(!this.needed, 3, this.position.ToString()); // If it's not there and not required, then mark it as satisfied
+					return new metReturn(!this.needed, invalidArgsCode.posNotFound, this.position.ToString()); // If it's not there and not required, then mark it as satisfied
 				}
 				// As of here there is enough room for the arg, now to check it against the blacklist
 				string thisArg = arguments[pos].contents;
 				foreach (string bad in blacklist) {
 					if (bad == thisArg) {
 						this.wasFound = false;
-						return new metReturn(!this.needed, 3); // If it's not there and not required, then mark it as satisfied
+						return new metReturn(!this.needed, invalidArgsCode.posNotFound); // If it's not there and not required, then mark it as satisfied
 					}
 				}
 
@@ -163,7 +170,7 @@ namespace tools {
 		}
 		public static metReturn applyArguments(List<argumentCondition> argumentRequirements, List<String> arguments) {
 			if (argumentRequirements.Count == 0) {
-				return new metReturn(arguments.Count == 0, 4);
+				return new metReturn(arguments.Count == 0, invalidArgsCode.argUnknown);
 			}
 			List<simpleArg> sArgs = new List<simpleArg>();
 			foreach (string argument in arguments) {
@@ -178,21 +185,21 @@ namespace tools {
 			}
 			foreach (simpleArg sArg in  sArgs) {
 				if (!sArg.used) {
-					return new metReturn(4, sArg.contents);
+					return new metReturn(invalidArgsCode.argUnknown, sArg.contents);
 				}
 			}
 			return new metReturn(true);
 		}
 		public class metReturn {
 			public bool valid;
-			public int errorCode;
+			public invalidArgsCode errorCode;
 			public string problemArg;
-			public metReturn(bool valid, int errorCode = 0, string problemArg = null) {
+			public metReturn(bool valid, invalidArgsCode errorCode = 0, string problemArg = null) {
 				this.valid = valid;
 				this.errorCode = errorCode;
 				this.problemArg = problemArg;
 			}
-			public metReturn(int errorCode = 0, string problemArg = null) {
+			public metReturn(invalidArgsCode errorCode = 0, string problemArg = null) {
 				this.errorCode = errorCode;
 				this.valid = errorCode==0;
 				this.problemArg = problemArg;
@@ -209,16 +216,17 @@ namespace tools {
 			if (Console.KeyAvailable) {
 				ConsoleKeyInfo key = Console.ReadKey(true);
 				if (key.Key == ConsoleKey.C && key.Modifiers == ConsoleModifiers.Control) {
+					cmd.Exit();
 					messages.errors.interpreter.keyboardInterrupt();
 					return exitcode.HANDLEDERROR;
 				} else if (key.Key == globals.SuspendKey && key.Modifiers == ConsoleModifiers.Control) {
+					cmd.Exit();
 					globals.suspended = cmd;
 					return exitcode.HALT;
 				}
-				return cmd.Run(key);
-			} else {
-				return cmd.Run(new ConsoleKeyInfo((char)0, ConsoleKey.NoName, false, false, false));
+				cmd.KeyPress(key);
 			}
+			return cmd.Run();
 		}
 		public static exitcode interpret(string line) {
 			if (line == "") {
@@ -241,7 +249,7 @@ namespace tools {
 			metReturn isMet = tools.shell.applyArguments(cmd.argsReqs, args);
 			if (!isMet.valid) { messages.errors.arguments.invalidArgs(args, isMet); return exitcode.HANDLEDERROR; }
 
-			exitcode exitCode = cmd.BeforeRun(args);
+			exitcode exitCode = cmd.Start(args);
 			while (exitCode == exitcode.CONTINUE) {
 				exitCode = step(cmd);
 			}
@@ -249,6 +257,7 @@ namespace tools {
 				Console.WriteLine((int)exitCode);
 				return exitCode;
 			}
+			cmd.Exit();
 			return 0;
 		}
 		public static exitcode interpretFile(string path) {

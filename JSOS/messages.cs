@@ -12,14 +12,21 @@ namespace messages {
 			get { return globals.messagePrefix ? "SYSERR: " : ""; }
 		}
 		static public class arguments {
+			public enum invalidArgsCode {
+				flagNotFound,
+				flagNotEnoughFollowers,
+				posNotFound,
+				argUnknown,
+
+			}
 			static public void invalidArgs(List<String> args, metReturn failure) {
-				if (failure.errorCode == 1) {
+				if (failure.errorCode == invalidArgsCode.flagNotFound) {
 					Console.WriteLine($"A flag '{failure.problemArg}' was needed and not found");
-				} else if (failure.errorCode == 2) {
+				} else if (failure.errorCode == invalidArgsCode.flagNotEnoughFollowers) {
 					Console.WriteLine("A flag had insufficient followers");
-				} else if (failure.errorCode == 3) {
+				} else if (failure.errorCode == invalidArgsCode.posNotFound) {
 					Console.WriteLine($"A positional '{failure.problemArg}' was needed and not found");
-				} else if (failure.errorCode == 4) {
+				} else if (failure.errorCode == invalidArgsCode.argUnknown) {
 					Console.WriteLine($"Unknown argument {failure.problemArg}");
 				} else {
 					Console.WriteLine(prefix + "Invalid arguments '" + tools.lists.ToString(args) + "', no additional information given");

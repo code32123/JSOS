@@ -25,11 +25,12 @@ using static commands.main;
 //		.scr		script for shell
 
 namespace g {
-	public static class globals {
+	public static class globals { 
 		public static Sys.FileSystem.CosmosVFS fs;
 		public static string cwd = @"0:\";
 		public static bool messagePrefix = true;
-		public static List<string> commandHistory = new();
+		public static List<string> commandHistory = new() {"scr t.scr"};
+		//public static List<string> commandHistory = new();
 		public static int screenWidth = 80;
 		public static int screenHeight = 25;
 		public static List<shell.command> loadedCommands;
@@ -86,6 +87,7 @@ namespace JSOS {
 				new commands.main.resume(),
 
 				new commands.tool.edit(),
+				new commands.tool.scr(),
 				//new commands.tool.hexedit(),
 
 			};
